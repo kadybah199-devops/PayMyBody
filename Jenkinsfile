@@ -3,21 +3,21 @@ pipeline {
 
     environment {
         // DockerHub
-        DOCKERHUB_USERNAME  = "kady199"
-        IMAGE_NAME          = "${DOCKERHUB_USERNAME}/spring-app"
-        IMAGE_TAG           = "${BUILD_NUMBER}"
+        DOCKERHUB_USERNAME   = "kadybah199"
+        IMAGE_NAME           = "${DOCKERHUB_USERNAME}/paymybody"
+        IMAGE_TAG            = "${BUILD_NUMBER}"
 
         // SonarCloud
-        SONAR_PROJECT_KEY   = "jenkins"
-        SONAR_ORG           = "kadybah199-devops"
+        SONAR_PROJECT_KEY    = "kadybah199-devops_PayMyBody"
+        SONAR_ORG            = "kadybah199-devops"
 
         // Serveurs SSH
-        STAGING_HOST        = "13.220.182.218"
-        PROD_HOST           = "18.212.245.161"
-        SSH_USER            = "ubuntu"
+        STAGING_HOST         = "IP_STAGING"
+        PROD_HOST            = "IP_PROD"
+        SSH_USER             = "ubuntu"
 
         // Slack
-        SLACK_CHANNEL       = "#ci-cd-notifications"
+        SLACK_CHANNEL        = "#ci-cd-notifications"
     }
 
     stages {
@@ -29,7 +29,7 @@ pipeline {
             agent {
                 docker {
                     image 'maven:3.9.6-eclipse-temurin-17'
-                    args '-v $HOME/.m2:/root/.m2'
+                    args  '-v $HOME/.m2:/root/.m2'
                 }
             }
             steps {
@@ -49,7 +49,7 @@ pipeline {
             agent {
                 docker {
                     image 'maven:3.9.6-eclipse-temurin-17'
-                    args '-v $HOME/.m2:/root/.m2'
+                    args  '-v $HOME/.m2:/root/.m2'
                 }
             }
             steps {
@@ -66,23 +66,23 @@ pipeline {
         }
 
         // ─────────────────────────────────────────
-        // ÉTAPE 3 : Build + Package + Push DockerHub
+        // ÉTAPE 3 : Compilation + Build + Push Docker
         // ─────────────────────────────────────────
-        stage('Compilation et Packaging') {
+        stage('Compilation Maven') {
             agent {
                 docker {
                     image 'maven:3.9.6-eclipse-temurin-17'
-                    args '-v $HOME/.m2:/root/.m2'
+                    args  '-v $HOME/.m2:/root/.m2'
                 }
             }
             steps {
-                // Compilation Maven
                 sh 'mvn clean package -DskipTests'
+                archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
             }
         }
 
         stage('Build et Push Image Docker') {
-            agent { label 'built-in' } // Docker-in-Docker sur le nœud Jenkins
+            agent { label 'built-in' }
             steps {
                 script {
                     withCredentials([usernamePassword(
@@ -107,9 +107,7 @@ pipeline {
         // ÉTAPE 4 : Staging (main uniquement)
         // ─────────────────────────────────────────
         stage('Déploiement Staging') {
-            when {
-                branch 'main'
-            }
+            when { branch 'main' }
             agent { label 'built-in' }
             steps {
                 withCredentials([sshUserPrivateKey(
@@ -119,10 +117,10 @@ pipeline {
                     sh """
                         ssh -i ${SSH_KEY} -o StrictHostKeyChecking=no ${SSH_USER}@${STAGING_HOST} '
                             docker pull ${IMAGE_NAME}:${IMAGE_TAG} &&
-                            docker stop spring-app-staging || true &&
-                            docker rm spring-app-staging || true &&
+                            docker stop paymybody-staging || true &&
+                            docker rm   paymybody-staging || true &&
                             docker run -d \
-                                --name spring-app-staging \
+                                --name paymybody-staging \
                                 --restart always \
                                 -p 8080:8080 \
                                 ${IMAGE_NAME}:${IMAGE_TAG}
@@ -136,14 +134,11 @@ pipeline {
         // ÉTAPE 5 : Production (main uniquement)
         // ─────────────────────────────────────────
         stage('Déploiement Production') {
-            when {
-                branch 'main'
-            }
+            when { branch 'main' }
             agent { label 'built-in' }
             steps {
-                // Validation manuelle avant prod
                 timeout(time: 5, unit: 'MINUTES') {
-                    input message: 'Déployer en Production ?', ok: 'Confirmer'
+                    input message: 'Déployer PayMyBody en Production ?', ok: 'Confirmer'
                 }
                 withCredentials([sshUserPrivateKey(
                     credentialsId: 'ssh-prod-key',
@@ -152,10 +147,10 @@ pipeline {
                     sh """
                         ssh -i ${SSH_KEY} -o StrictHostKeyChecking=no ${SSH_USER}@${PROD_HOST} '
                             docker pull ${IMAGE_NAME}:${IMAGE_TAG} &&
-                            docker stop spring-app-prod || true &&
-                            docker rm spring-app-prod || true &&
+                            docker stop paymybody-prod || true &&
+                            docker rm   paymybody-prod || true &&
                             docker run -d \
-                                --name spring-app-prod \
+                                --name paymybody-prod \
                                 --restart always \
                                 -p 80:8080 \
                                 ${IMAGE_NAME}:${IMAGE_TAG}
@@ -168,72 +163,63 @@ pipeline {
         // ─────────────────────────────────────────
         // ÉTAPE 6 : Tests de Validation
         // ─────────────────────────────────────────
-        stage('Tests de Validation Staging') {
-            when {
-                branch 'main'
-            }
+        stage('Validation Staging') {
+            when { branch 'main' }
             agent {
-                docker {
-                    image 'curlimages/curl:latest'
-                }
+                docker { image 'curlimages/curl:latest' }
             }
             steps {
                 sh """
                     sleep 15
                     curl -f http://${STAGING_HOST}:8080/actuator/health || exit 1
-                    echo "✅ Staging opérationnel"
+                    echo "✅ Staging PayMyBody opérationnel"
                 """
             }
         }
 
-        stage('Tests de Validation Production') {
-            when {
-                branch 'main'
-            }
+        stage('Validation Production') {
+            when { branch 'main' }
             agent {
-                docker {
-                    image 'curlimages/curl:latest'
-                }
+                docker { image 'curlimages/curl:latest' }
             }
             steps {
                 sh """
                     sleep 10
                     curl -f http://${PROD_HOST}/actuator/health || exit 1
-                    echo "✅ Production opérationnelle"
+                    echo "✅ Production PayMyBody opérationnelle"
                 """
             }
         }
     }
 
     // ─────────────────────────────────────────
-    // NOTIFICATION SLACK
+    // NOTIFICATIONS SLACK
     // ─────────────────────────────────────────
     post {
         success {
             slackSend(
                 channel: "${SLACK_CHANNEL}",
-                color: "good",
+                color: 'good',
                 message: """
-✅ *Pipeline réussie !*
-- *Job* : ${JOB_NAME}
-- *Build* : #${BUILD_NUMBER}
+✅ *Pipeline PayMyBody réussie !*
+- *Job*     : ${JOB_NAME}
+- *Build*   : #${BUILD_NUMBER}
 - *Branche* : ${GIT_BRANCH}
-- *Durée* : ${currentBuild.durationString}
-- *Lien* : ${BUILD_URL}
+- *Durée*   : ${currentBuild.durationString}
+- *Lien*    : ${BUILD_URL}
                 """
             )
         }
         failure {
             slackSend(
                 channel: "${SLACK_CHANNEL}",
-                color: "danger",
+                color: 'danger',
                 message: """
-❌ *Pipeline échouée !*
-- *Job* : ${JOB_NAME}
-- *Build* : #${BUILD_NUMBER}
+❌ *Pipeline PayMyBody échouée !*
+- *Job*     : ${JOB_NAME}
+- *Build*   : #${BUILD_NUMBER}
 - *Branche* : ${GIT_BRANCH}
-- *Étape* : ${currentBuild.currentResult}
-- *Lien* : ${BUILD_URL}
+- *Lien*    : ${BUILD_URL}
                 """
             )
         }
@@ -242,17 +228,3 @@ pipeline {
         }
     }
 }
-```
-
----
-
-## Étape 3 : Configurer Jenkins
-
-### Plugins à installer
-Dans **Manage Jenkins → Plugins**, installez :
-```
-✅ Docker Pipeline
-✅ SonarQube Scanner
-✅ Slack Notification
-✅ SSH Agent
-✅ Multibranch Pipeline

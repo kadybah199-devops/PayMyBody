@@ -81,7 +81,7 @@ GitHub (push)
 
 ```bash
 git --version
-terraform --version
+jenkins --version
 aws --version
 docker --version
 ```
@@ -91,7 +91,7 @@ docker --version
 ## 📁 Structure du Projet
 
 ```
-terraform_jenkins/
+Pipline_CICD/
 ├── app/                          # Code source Spring Boot
 │   ├── src/
 │   │   ├── main/java/            # Code source principal
@@ -181,16 +181,7 @@ ssh-copy-id -i ~/.ssh/prod_key.pub ubuntu@IP_PROD
 ### 6. .gitignore recommandé
 
 ```gitignore
-# Terraform
-.terraform/
-.terraform.lock.hcl
-*.tfstate
-*.tfstate.backup
-*.tfvars
-crash.log
-
 # Clés SSH
-*.pem
 *.key
 
 # IDE
@@ -285,7 +276,7 @@ feature/* ───────────────────────�
 
 ```
 1. Jenkins → New Item
-2. Nom      : terraform_jenkins
+2. Nom      : Pipline_CICD
 3. Type     : Multibranch Pipeline
 4. Source   : GitHub → votre repo
 5. Save     → Jenkins scanne les branches automatiquement
@@ -320,7 +311,7 @@ curl http://IP_PROD/actuator/health
 **✅ Succès**
 ```
 ✅ Pipeline réussie !
-• Job     : terraform_jenkins
+• Job     : Pipline_CICD
 • Build   : #12
 • Branche : main
 • Durée   : 4 min 32 sec
@@ -330,58 +321,13 @@ curl http://IP_PROD/actuator/health
 **❌ Échec**
 ```
 ❌ Pipeline échouée !
-• Job     : terraform_jenkins
+• Job     : Pipline_CICD
 • Build   : #12
 • Branche : main
 • Lien    : http://jenkins:8080/job/...
 ```
 
 ---
-
-## 🛠️ Dépannage
-
-### Credentials AWS expirés (AWS Academy)
-```bash
-# Les credentials expirent toutes les 4h sur AWS Academy
-aws configure set aws_access_key_id "NOUVELLE_KEY"
-aws configure set aws_secret_access_key "NOUVEAU_SECRET"
-aws configure set aws_session_token "NOUVEAU_TOKEN"
-
-# Vérifier
-aws sts get-caller-identity
-```
-
-### Modules Terraform non installés
-```bash
-cd app/
-terraform init
-terraform validate
-terraform apply --auto-approve
-```
-
-### Gros fichiers bloqués par GitHub (>100MB)
-```bash
-# Supprimer .terraform de tout l'historique Git
-git filter-branch --force --index-filter \
-  "git rm -rf --cached --ignore-unmatch app/.terraform/" \
-  --prune-empty --tag-name-filter cat -- --all
-
-git remote add origin https://github.com/votre-repo.git
-git push origin main --force
-```
-
-### Nettoyage après terraform destroy
-```powershell
-# PowerShell - Supprimer les fichiers locaux Terraform
-Remove-Item -Recurse -Force .terraform
-Remove-Item -Force .terraform.lock.hcl
-Remove-Item -Force terraform.tfstate
-Remove-Item -Force terraform.tfstate.backup
-Remove-Item -Force *.pem
-```
-
----
-
 ## 📚 Ressources
 
 - [Documentation Jenkins](https://www.jenkins.io/doc/)
@@ -389,7 +335,6 @@ Remove-Item -Force *.pem
 - [SonarCloud Documentation](https://docs.sonarcloud.io/)
 - [Docker Hub](https://hub.docker.com/)
 - [Meilleures pratiques CI/CD](https://www.jenkins.io/doc/book/pipeline/pipeline-best-practices/)
-- [Terraform AWS Provider](https://registry.terraform.io/providers/hashicorp/aws/latest/docs)
 
 ---
 

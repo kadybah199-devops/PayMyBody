@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         // DockerHub
-        DOCKERHUB_USERNAME   = "kadybah199"
+        DOCKERHUB_USERNAME   = "kady199"
         IMAGE_NAME           = "${DOCKERHUB_USERNAME}/paymybody"
         IMAGE_TAG            = "${BUILD_NUMBER}"
 
@@ -12,8 +12,8 @@ pipeline {
         SONAR_ORG            = "kadybah199-devops"
 
         // Serveurs SSH
-        STAGING_HOST         = "IP_STAGING"
-        PROD_HOST            = "IP_PROD"
+        STAGING_HOST         = "13.220.182.218"
+        PROD_HOST            = "18.212.245.161"
         SSH_USER             = "ubuntu"
 
         // Slack
